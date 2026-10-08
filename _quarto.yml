@@ -10,10 +10,15 @@ website:
   navbar:
     background: primary
     search: false
+    left: 
+      - text: "Home"
+        href: index.qmd
+      - text: "MP#01"
+        href: mp01.qmd
     
 format:
   html:
-    theme: sandstone
+    theme: cosmo
     toc: false
 
 editor:
