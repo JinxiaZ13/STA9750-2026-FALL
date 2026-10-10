@@ -355,6 +355,310 @@ display: none;
 
 <p>This is a placeholder for STA 9750 Mini-Project 1. Check back soon
 for more!</p>
+<pre class="r"><code>glimpse(NETFLIX_DATA)</code></pre>
+<pre><code>## Rows: 61,892
+## Columns: 11
+## $ year               [3m[38;5;246m&lt;int&gt;[39m[23m 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023…
+## $ period             [3m[38;5;246m&lt;chr&gt;[39m[23m &quot;2023H1&quot;, &quot;2023H1&quot;, &quot;2023H1&quot;, &quot;2023H1&quot;, &quot;2023H1&quot;, &quot;2…
+## $ period_start       [3m[38;5;246m&lt;date&gt;[39m[23m 2023-01-01, 2023-01-01, 2023-01-01, 2023-01-01, 202…
+## $ period_end         [3m[38;5;246m&lt;date&gt;[39m[23m 2023-07-30, 2023-07-30, 2023-07-30, 2023-07-30, 202…
+## $ title              [3m[38;5;246m&lt;chr&gt;[39m[23m &quot;The Night Agent: Season 1&quot;, &quot;Ginny &amp; Georgia: Seaso…
+## $ runtime            [3m[38;5;246m&lt;dbl&gt;[39m[23m 491, 587, 856, 409, 389, 497, 2703, 533, 548, 428, 9…
+## $ views              [3m[38;5;246m&lt;dbl&gt;[39m[23m NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+## $ hours_viewed       [3m[38;5;246m&lt;dbl&gt;[39m[23m 812100000, 665100000, 622800000, 507700000, 50300000…
+## $ release_date       [3m[38;5;246m&lt;date&gt;[39m[23m 2023-03-23, 2023-01-05, 2022-12-30, 2022-11-23, 202…
+## $ available_globally [3m[38;5;246m&lt;lgl&gt;[39m[23m TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, TRUE, TRU…
+## $ live_event         [3m[38;5;246m&lt;lgl&gt;[39m[23m FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FAL…</code></pre>
+<pre class="r"><code>skim(NETFLIX_DATA)</code></pre>
+<table>
+<caption>Data summary</caption>
+<tbody>
+<tr class="odd">
+<td align="left">Name</td>
+<td align="left">NETFLIX_DATA</td>
+</tr>
+<tr class="even">
+<td align="left">Number of rows</td>
+<td align="left">61892</td>
+</tr>
+<tr class="odd">
+<td align="left">Number of columns</td>
+<td align="left">11</td>
+</tr>
+<tr class="even">
+<td align="left">_______________________</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">Column type frequency:</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">character</td>
+<td align="left">2</td>
+</tr>
+<tr class="odd">
+<td align="left">Date</td>
+<td align="left">3</td>
+</tr>
+<tr class="even">
+<td align="left">logical</td>
+<td align="left">2</td>
+</tr>
+<tr class="odd">
+<td align="left">numeric</td>
+<td align="left">4</td>
+</tr>
+<tr class="even">
+<td align="left">________________________</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">Group variables</td>
+<td align="left">None</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: character</strong></p>
+<table>
+<colgroup>
+<col width="19%" />
+<col width="13%" />
+<col width="19%" />
+<col width="5%" />
+<col width="5%" />
+<col width="8%" />
+<col width="12%" />
+<col width="15%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="right">min</th>
+<th align="right">max</th>
+<th align="right">empty</th>
+<th align="right">n_unique</th>
+<th align="right">whitespace</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">period</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">6</td>
+<td align="right">6</td>
+<td align="right">0</td>
+<td align="right">7</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">title</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">217</td>
+<td align="right">0</td>
+<td align="right">24427</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: Date</strong></p>
+<table>
+<colgroup>
+<col width="17%" />
+<col width="12%" />
+<col width="17%" />
+<col width="13%" />
+<col width="13%" />
+<col width="13%" />
+<col width="11%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="left">min</th>
+<th align="left">max</th>
+<th align="left">median</th>
+<th align="right">n_unique</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">period_start</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="left">2023-01-01</td>
+<td align="left">2026-01-01</td>
+<td align="left">2024-01-01</td>
+<td align="right">7</td>
+</tr>
+<tr class="even">
+<td align="left">period_end</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="left">2023-07-30</td>
+<td align="left">2026-07-30</td>
+<td align="left">2024-07-30</td>
+<td align="right">7</td>
+</tr>
+<tr class="odd">
+<td align="left">release_date</td>
+<td align="right">35251</td>
+<td align="right">0.43</td>
+<td align="left">2010-04-01</td>
+<td align="left">2026-06-29</td>
+<td align="left">2021-06-17</td>
+<td align="right">2487</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: logical</strong></p>
+<table>
+<colgroup>
+<col width="26%" />
+<col width="14%" />
+<col width="19%" />
+<col width="7%" />
+<col width="32%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="right">mean</th>
+<th align="left">count</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">available_globally</td>
+<td align="right">2</td>
+<td align="right">1</td>
+<td align="right">0.35</td>
+<td align="left">FAL: 40171, TRU: 21719</td>
+</tr>
+<tr class="even">
+<td align="left">live_event</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">0.01</td>
+<td align="left">FAL: 61582, TRU: 310</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: numeric</strong></p>
+<table>
+<colgroup>
+<col width="13%" />
+<col width="9%" />
+<col width="13%" />
+<col width="10%" />
+<col width="11%" />
+<col width="6%" />
+<col width="6%" />
+<col width="7%" />
+<col width="7%" />
+<col width="9%" />
+<col width="5%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="right">mean</th>
+<th align="right">sd</th>
+<th align="right">p0</th>
+<th align="right">p25</th>
+<th align="right">p50</th>
+<th align="right">p75</th>
+<th align="right">p100</th>
+<th align="left">hist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">year</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">2024.11</td>
+<td align="right">1.08</td>
+<td align="right">2023</td>
+<td align="right">2023</td>
+<td align="right">2024</td>
+<td align="right">2025</td>
+<td align="right">2026</td>
+<td align="left">▇▅▁▅▂</td>
+</tr>
+<tr class="even">
+<td align="left">runtime</td>
+<td align="right">13085</td>
+<td align="right">0.79</td>
+<td align="right">467.35</td>
+<td align="right">694.71</td>
+<td align="right">2</td>
+<td align="right">210</td>
+<td align="right">320</td>
+<td align="right">545</td>
+<td align="right">23853</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">views</td>
+<td align="right">18198</td>
+<td align="right">0.71</td>
+<td align="right">1375241.45</td>
+<td align="right">3630933.22</td>
+<td align="right">100000</td>
+<td align="right">100000</td>
+<td align="right">400000</td>
+<td align="right">1200000</td>
+<td align="right">144800000</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="even">
+<td align="left">hours_viewed</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">8265858.27</td>
+<td align="right">24924226.03</td>
+<td align="right">100000</td>
+<td align="right">500000</td>
+<td align="right">1800000</td>
+<td align="right">6400000</td>
+<td align="right">964100000</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+</tbody>
+</table>
+<div id="initial-observations" class="section level3">
+<h3>Initial Observations</h3>
+<ol style="list-style-type: decimal">
+<li>The dataset comprises 11 variables and a total of 61,892 records.
+All column names consist solely of alphanumeric characters, begin with a
+lowercase letter, and use underscores o separate words.</li>
+<li>Missing values exist in the <code>runtime</code> and
+<code>views</code> fields. This stems from inconsistencies in the raw
+data reported by Netflix, specific durations were not recorded for some
+titles, making it impossible to calculate the corresponding view counts.
+Missing records also appear in the <code>release_date</code> field, as
+this information was not always available.</li>
+<li>Both <code>hours_viewed</code> and <code>views</code> exhibit
+extreme positive skewness, sparklines reveal that the data is heavily
+concentrated near the minimum value. For <code>hours_viewed</code>, 75%
+of the titles fall within the 6.4 million-hour range, yet the maximum
+value soars to 964,100,000 hours. Similarly, for <code>views</code>, 75%
+of the titles fall within 1.2 million views, while the maximum reaches
+144,800,000 views.</li>
+</ol>
+</div>
 
 
 
