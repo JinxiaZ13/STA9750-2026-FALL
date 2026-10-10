@@ -30,6 +30,7 @@ load_netflix_data <- function(){
   library(rvest)
   library(readxl)
   library(fs)
+  library(skimr)
   
   data_dir <- path("data", "mp01")
     
@@ -97,4 +98,28 @@ load_netflix_data <- function(){
 }
 
 NETFLIX_DATA <- load_netflix_data()
+
+NETFLIX_DATA <- NETFLIX_DATA |>
+  rename(
+    title = Title,
+    runtime = Runtime,
+    views = Views,
+    hours_viewed = `Hours Viewed`,
+    release_date = `Release Date`,
+    available_globally = `Available Globally?`
+  ) |>
+  mutate(
+    year = as.integer(year),
+    available_globally = (available_globally == "Yes"),
+  )
 ```
+
+```{r}
+glimpse(NETFLIX_DATA)
+skim(NETFLIX_DATA)
+```
+
+### Initial Observations
+1. The dataset comprises 11 variables and a total of 61,892 records. All column names consist solely of alphanumeric characters, begin with a lowercase letter, and use underscores o separate words.
+2. Missing values exist in the `runtime` and `views` fields. This stems from inconsistencies in the raw data reported by Netflix, specific durations were not recorded for some titles, making it impossible to calculate the corresponding view counts. Missing records also appear in the `release_date` field, as this information was not always available.
+3. Both `hours_viewed` and `views` exhibit extreme positive skewness, sparklines reveal that the data is heavily concentrated near the minimum value. For `hours_viewed`, 75% of the titles fall within the 6.4 million-hour range, yet the maximum value soars to 964,100,000 hours. Similarly, for `views`, 75% of the titles fall within 1.2 million views, while the maximum reaches 144,800,000 views.
