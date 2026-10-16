@@ -353,8 +353,6 @@ display: none;
 </div>
 
 
-<p>This is a placeholder for STA 9750 Mini-Project 1. Check back soon
-for more!</p>
 <pre class="r"><code>glimpse(NETFLIX_DATA)</code></pre>
 <pre><code>## Rows: 61,892
 ## Columns: 11
@@ -658,6 +656,2368 @@ value soars to 964,100,000 hours. Similarly, for <code>views</code>, 75%
 of the titles fall within 1.2 million views, while the maximum reaches
 144,800,000 views.</li>
 </ol>
+<hr />
+</div>
+<div id="exploratory-questions---inline-values" class="section level3">
+<h3>Exploratory Questions - Inline Values</h3>
+<pre class="r"><code>#Q1
+min_date &lt;- min(NETFLIX_DATA$period_start, na.rm = TRUE)
+max_date &lt;- max(NETFLIX_DATA$period_end, na.rm = TRUE)
+
+#Q2
+n_titles &lt;- NETFLIX_DATA |&gt;
+  distinct(title) |&gt;
+  nrow()
+
+#Q3
+bridgerton_hours &lt;- NETFLIX_DATA |&gt;
+  filter(str_detect(title, &quot;Bridgerton&quot;)) |&gt;
+  summarize(total = sum(hours_viewed, na.rm = TRUE)) |&gt;
+  pull(total)
+
+#Q4
+st_hours &lt;- NETFLIX_DATA |&gt; 
+  filter(str_detect(title, &quot;Stranger Things&quot;)) |&gt; 
+  filter(!str_detect(title, &quot;Beyond Stranger Things&quot;)) |&gt; 
+  filter(!str_detect(title, &quot;Tales from &#39;85&quot;)) |&gt; 
+  filter(!str_detect(title, &quot;Fireplace&quot;)) |&gt; 
+  summarize(total = sum(hours_viewed, na.rm = TRUE)) |&gt; 
+  pull(total)
+  
+#Q5
+data_2026h1 &lt;- NETFLIX_DATA |&gt; filter(period == &quot;2026H1&quot;)
+
+#Top10 2026H1 total hours
+top10_2026h1 &lt;- data_2026h1 |&gt; 
+  slice_max(order_by = hours_viewed, n = 10) |&gt; 
+  summarize(total = sum(hours_viewed, na.rm = TRUE)) |&gt; 
+  pull(total)
+
+#2026H1 total hours
+total_2026h1 &lt;- data_2026h1 |&gt; 
+  summarize(total = sum(hours_viewed, na.rm = TRUE)) |&gt; 
+  pull(total)
+
+top10_pct_2026h1 &lt;- top10_2026h1 / total_2026h1
+
+#Q6
+#By title
+fraction_title &lt;- NETFLIX_DATA |&gt; 
+  distinct(title, available_globally) |&gt; 
+  summarize(fraction_title = mean(available_globally == TRUE, na.rm = TRUE)) |&gt;
+  pull(fraction_title)
+
+#Weighted by hours viewed
+fraction_hours &lt;- NETFLIX_DATA |&gt; 
+  summarize(
+    global_hours = sum(hours_viewed[available_globally == TRUE], na.rm = TRUE),
+    total_hours = sum(hours_viewed, na.rm = TRUE),
+    fraction_hours = global_hours / total_hours
+  ) |&gt; 
+  pull(fraction_hours)</code></pre>
+</div>
+<div id="exploratory-questions---inline-values---summary" class="section level3">
+<h3>Exploratory Questions - Inline Values - Summary</h3>
+<ol style="list-style-type: decimal">
+<li>The date range is from 2023-01-01 to 2026-07-30.</li>
+<li>There are 24,427 distinct shows and movies covered in this data
+set.</li>
+<li>A total of 4,862,800,000 hours have been spent watching shows from
+the Bridgerton universe.</li>
+<li>A total of 5,588,900,000 hours have been spent watching the five
+seasons of Stranger Things.</li>
+<li>6.70% of total watch time was spent on the Top 10 titles of
+2026H1.</li>
+<li>Titles in the Netflix library available globally account for 23.77%
+of the catalog and 51.92% of total viewing hours.</li>
+</ol>
+<hr />
+</div>
+<div id="exploratory-questions---table-answers" class="section level3">
+<h3>Exploratory Questions - Table Answers</h3>
+<pre class="r"><code>#Q1
+NETFLIX_DATA |&gt;
+  group_by(period) |&gt;
+  mutate(period_total_hours = sum(hours_viewed, na.rm = TRUE)) |&gt;
+  slice_max(hours_viewed, n = 1) |&gt;
+  ungroup() |&gt;
+  mutate(fraction_viewed_hours = hours_viewed / period_total_hours) |&gt;
+  select(period, title, hours_viewed, fraction_viewed_hours) |&gt;
+  gt() |&gt;
+  fmt_number(columns = hours_viewed, decimals = 0) |&gt;
+  fmt_percent(columns = fraction_viewed_hours, decimals = 2)</code></pre>
+<div id="vvdjgwrjep" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#vvdjgwrjep table {
+font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+}
+#vvdjgwrjep thead, #vvdjgwrjep tbody, #vvdjgwrjep tfoot, #vvdjgwrjep tr, #vvdjgwrjep td, #vvdjgwrjep th {
+border-style: none;
+}
+#vvdjgwrjep p {
+margin: 0;
+padding: 0;
+}
+#vvdjgwrjep .gt_table {
+display: table;
+border-collapse: collapse;
+line-height: normal;
+margin-left: auto;
+margin-right: auto;
+color: #333333;
+font-size: 16px;
+font-weight: normal;
+font-style: normal;
+background-color: #FFFFFF;
+width: auto;
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #A8A8A8;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #A8A8A8;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+}
+#vvdjgwrjep .gt_caption {
+padding-top: 4px;
+padding-bottom: 4px;
+}
+#vvdjgwrjep .gt_title {
+color: #333333;
+font-size: 125%;
+font-weight: initial;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-color: #FFFFFF;
+border-bottom-width: 0;
+}
+#vvdjgwrjep .gt_subtitle {
+color: #333333;
+font-size: 85%;
+font-weight: initial;
+padding-top: 3px;
+padding-bottom: 5px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-color: #FFFFFF;
+border-top-width: 0;
+}
+#vvdjgwrjep .gt_heading {
+background-color: #FFFFFF;
+text-align: center;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+#vvdjgwrjep .gt_bottom_border {
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+#vvdjgwrjep .gt_col_headings {
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+#vvdjgwrjep .gt_col_heading {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 6px;
+padding-left: 5px;
+padding-right: 5px;
+overflow-x: hidden;
+}
+#vvdjgwrjep .gt_column_spanner_outer {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+padding-top: 0;
+padding-bottom: 0;
+padding-left: 4px;
+padding-right: 4px;
+}
+#vvdjgwrjep .gt_column_spanner_outer:first-child {
+padding-left: 0;
+}
+#vvdjgwrjep .gt_column_spanner_outer:last-child {
+padding-right: 0;
+}
+#vvdjgwrjep .gt_column_spanner {
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 5px;
+overflow-x: hidden;
+display: inline-block;
+width: 100%;
+}
+#vvdjgwrjep .gt_spanner_row {
+border-bottom-style: hidden;
+}
+#vvdjgwrjep .gt_group_heading {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+text-align: left;
+}
+#vvdjgwrjep .gt_empty_group_heading {
+padding: 0.5px;
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+vertical-align: middle;
+}
+#vvdjgwrjep .gt_from_md > :first-child {
+margin-top: 0;
+}
+#vvdjgwrjep .gt_from_md > :last-child {
+margin-bottom: 0;
+}
+#vvdjgwrjep .gt_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+margin: 10px;
+border-top-style: solid;
+border-top-width: 1px;
+border-top-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+overflow-x: hidden;
+}
+#vvdjgwrjep .gt_stub {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+}
+#vvdjgwrjep .gt_stub_row_group {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+vertical-align: top;
+}
+#vvdjgwrjep .gt_row_group_first td {
+border-top-width: 2px;
+}
+#vvdjgwrjep .gt_row_group_first th {
+border-top-width: 2px;
+}
+#vvdjgwrjep .gt_summary_row {
+color: #333333;
+background-color: #FFFFFF;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#vvdjgwrjep .gt_first_summary_row {
+border-top-style: solid;
+border-top-color: #D3D3D3;
+}
+#vvdjgwrjep .gt_first_summary_row.thick {
+border-top-width: 2px;
+}
+#vvdjgwrjep .gt_last_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+#vvdjgwrjep .gt_grand_summary_row {
+color: #333333;
+background-color: #FFFFFF;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#vvdjgwrjep .gt_first_grand_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-style: double;
+border-top-width: 6px;
+border-top-color: #D3D3D3;
+}
+#vvdjgwrjep .gt_last_grand_summary_row_top {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: double;
+border-bottom-width: 6px;
+border-bottom-color: #D3D3D3;
+}
+#vvdjgwrjep .gt_striped {
+background-color: rgba(128, 128, 128, 0.05);
+}
+#vvdjgwrjep .gt_table_body {
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+#vvdjgwrjep .gt_footnotes {
+color: #333333;
+background-color: #FFFFFF;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+#vvdjgwrjep .gt_footnote {
+margin: 0px;
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#vvdjgwrjep .gt_sourcenotes {
+color: #333333;
+background-color: #FFFFFF;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+#vvdjgwrjep .gt_sourcenote {
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#vvdjgwrjep .gt_left {
+text-align: left;
+}
+#vvdjgwrjep .gt_center {
+text-align: center;
+}
+#vvdjgwrjep .gt_right {
+text-align: right;
+font-variant-numeric: tabular-nums;
+}
+#vvdjgwrjep .gt_font_normal {
+font-weight: normal;
+}
+#vvdjgwrjep .gt_font_bold {
+font-weight: bold;
+}
+#vvdjgwrjep .gt_font_italic {
+font-style: italic;
+}
+#vvdjgwrjep .gt_super {
+font-size: 65%;
+}
+#vvdjgwrjep .gt_footnote_marks {
+font-size: 75%;
+vertical-align: 0.4em;
+position: initial;
+}
+#vvdjgwrjep .gt_asterisk {
+font-size: 100%;
+vertical-align: 0;
+}
+#vvdjgwrjep .gt_indent_1 {
+text-indent: 5px;
+}
+#vvdjgwrjep .gt_indent_2 {
+text-indent: 10px;
+}
+#vvdjgwrjep .gt_indent_3 {
+text-indent: 15px;
+}
+#vvdjgwrjep .gt_indent_4 {
+text-indent: 20px;
+}
+#vvdjgwrjep .gt_indent_5 {
+text-indent: 25px;
+}
+#vvdjgwrjep .katex-display {
+display: inline-flex !important;
+margin-bottom: 0.75em !important;
+}
+#vvdjgwrjep div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+height: 0px !important;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="period">period</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="title">title</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="hours_viewed">hours_viewed</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="fraction_viewed_hours">fraction_viewed_hours</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="period" class="gt_row gt_left">2023H1</td>
+<td headers="title" class="gt_row gt_left">The Night Agent: Season 1</td>
+<td headers="hours_viewed" class="gt_row gt_right">812,100,000</td>
+<td headers="fraction_viewed_hours" class="gt_row gt_right">0.87%</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2023H2</td>
+<td headers="title" class="gt_row gt_left">King the Land: Limited Series</td>
+<td headers="hours_viewed" class="gt_row gt_right">630,200,000</td>
+<td headers="fraction_viewed_hours" class="gt_row gt_right">0.97%</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2024H1</td>
+<td headers="title" class="gt_row gt_left">Bridgerton: Season 3</td>
+<td headers="hours_viewed" class="gt_row gt_right">733,800,000</td>
+<td headers="fraction_viewed_hours" class="gt_row gt_right">1.08%</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2024H2</td>
+<td headers="title" class="gt_row gt_left">Squid Game: Season 2</td>
+<td headers="hours_viewed" class="gt_row gt_right">619,900,000</td>
+<td headers="fraction_viewed_hours" class="gt_row gt_right">0.91%</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2025H1</td>
+<td headers="title" class="gt_row gt_left">Squid Game: Season 2</td>
+<td headers="hours_viewed" class="gt_row gt_right">840,300,000</td>
+<td headers="fraction_viewed_hours" class="gt_row gt_right">1.18%</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2025H2</td>
+<td headers="title" class="gt_row gt_left">Wednesday: Season 2</td>
+<td headers="hours_viewed" class="gt_row gt_right">964,100,000</td>
+<td headers="fraction_viewed_hours" class="gt_row gt_right">1.35%</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2026H1</td>
+<td headers="title" class="gt_row gt_left">Bridgerton: Season 4</td>
+<td headers="hours_viewed" class="gt_row gt_right">889,800,000</td>
+<td headers="fraction_viewed_hours" class="gt_row gt_right">1.20%</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+<pre class="r"><code>#Q2
+NETFLIX_DATA |&gt;
+  group_by(period) |&gt;
+  summarize(
+    num_titles = n_distinct(title),
+    total_runtime_hours = sum(runtime, na.rm = TRUE) / 60
+  ) |&gt;
+  gt() |&gt;
+  fmt_number(columns = c(num_titles, total_runtime_hours), decimals = 0)</code></pre>
+<div id="clfluiiaej" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#clfluiiaej table {
+font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+}
+#clfluiiaej thead, #clfluiiaej tbody, #clfluiiaej tfoot, #clfluiiaej tr, #clfluiiaej td, #clfluiiaej th {
+border-style: none;
+}
+#clfluiiaej p {
+margin: 0;
+padding: 0;
+}
+#clfluiiaej .gt_table {
+display: table;
+border-collapse: collapse;
+line-height: normal;
+margin-left: auto;
+margin-right: auto;
+color: #333333;
+font-size: 16px;
+font-weight: normal;
+font-style: normal;
+background-color: #FFFFFF;
+width: auto;
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #A8A8A8;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #A8A8A8;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+}
+#clfluiiaej .gt_caption {
+padding-top: 4px;
+padding-bottom: 4px;
+}
+#clfluiiaej .gt_title {
+color: #333333;
+font-size: 125%;
+font-weight: initial;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-color: #FFFFFF;
+border-bottom-width: 0;
+}
+#clfluiiaej .gt_subtitle {
+color: #333333;
+font-size: 85%;
+font-weight: initial;
+padding-top: 3px;
+padding-bottom: 5px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-color: #FFFFFF;
+border-top-width: 0;
+}
+#clfluiiaej .gt_heading {
+background-color: #FFFFFF;
+text-align: center;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+#clfluiiaej .gt_bottom_border {
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+#clfluiiaej .gt_col_headings {
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+#clfluiiaej .gt_col_heading {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 6px;
+padding-left: 5px;
+padding-right: 5px;
+overflow-x: hidden;
+}
+#clfluiiaej .gt_column_spanner_outer {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+padding-top: 0;
+padding-bottom: 0;
+padding-left: 4px;
+padding-right: 4px;
+}
+#clfluiiaej .gt_column_spanner_outer:first-child {
+padding-left: 0;
+}
+#clfluiiaej .gt_column_spanner_outer:last-child {
+padding-right: 0;
+}
+#clfluiiaej .gt_column_spanner {
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 5px;
+overflow-x: hidden;
+display: inline-block;
+width: 100%;
+}
+#clfluiiaej .gt_spanner_row {
+border-bottom-style: hidden;
+}
+#clfluiiaej .gt_group_heading {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+text-align: left;
+}
+#clfluiiaej .gt_empty_group_heading {
+padding: 0.5px;
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+vertical-align: middle;
+}
+#clfluiiaej .gt_from_md > :first-child {
+margin-top: 0;
+}
+#clfluiiaej .gt_from_md > :last-child {
+margin-bottom: 0;
+}
+#clfluiiaej .gt_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+margin: 10px;
+border-top-style: solid;
+border-top-width: 1px;
+border-top-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+overflow-x: hidden;
+}
+#clfluiiaej .gt_stub {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+}
+#clfluiiaej .gt_stub_row_group {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+vertical-align: top;
+}
+#clfluiiaej .gt_row_group_first td {
+border-top-width: 2px;
+}
+#clfluiiaej .gt_row_group_first th {
+border-top-width: 2px;
+}
+#clfluiiaej .gt_summary_row {
+color: #333333;
+background-color: #FFFFFF;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#clfluiiaej .gt_first_summary_row {
+border-top-style: solid;
+border-top-color: #D3D3D3;
+}
+#clfluiiaej .gt_first_summary_row.thick {
+border-top-width: 2px;
+}
+#clfluiiaej .gt_last_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+#clfluiiaej .gt_grand_summary_row {
+color: #333333;
+background-color: #FFFFFF;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#clfluiiaej .gt_first_grand_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-style: double;
+border-top-width: 6px;
+border-top-color: #D3D3D3;
+}
+#clfluiiaej .gt_last_grand_summary_row_top {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: double;
+border-bottom-width: 6px;
+border-bottom-color: #D3D3D3;
+}
+#clfluiiaej .gt_striped {
+background-color: rgba(128, 128, 128, 0.05);
+}
+#clfluiiaej .gt_table_body {
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+#clfluiiaej .gt_footnotes {
+color: #333333;
+background-color: #FFFFFF;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+#clfluiiaej .gt_footnote {
+margin: 0px;
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#clfluiiaej .gt_sourcenotes {
+color: #333333;
+background-color: #FFFFFF;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+#clfluiiaej .gt_sourcenote {
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#clfluiiaej .gt_left {
+text-align: left;
+}
+#clfluiiaej .gt_center {
+text-align: center;
+}
+#clfluiiaej .gt_right {
+text-align: right;
+font-variant-numeric: tabular-nums;
+}
+#clfluiiaej .gt_font_normal {
+font-weight: normal;
+}
+#clfluiiaej .gt_font_bold {
+font-weight: bold;
+}
+#clfluiiaej .gt_font_italic {
+font-style: italic;
+}
+#clfluiiaej .gt_super {
+font-size: 65%;
+}
+#clfluiiaej .gt_footnote_marks {
+font-size: 75%;
+vertical-align: 0.4em;
+position: initial;
+}
+#clfluiiaej .gt_asterisk {
+font-size: 100%;
+vertical-align: 0;
+}
+#clfluiiaej .gt_indent_1 {
+text-indent: 5px;
+}
+#clfluiiaej .gt_indent_2 {
+text-indent: 10px;
+}
+#clfluiiaej .gt_indent_3 {
+text-indent: 15px;
+}
+#clfluiiaej .gt_indent_4 {
+text-indent: 20px;
+}
+#clfluiiaej .gt_indent_5 {
+text-indent: 25px;
+}
+#clfluiiaej .katex-display {
+display: inline-flex !important;
+margin-bottom: 0.75em !important;
+}
+#clfluiiaej div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+height: 0px !important;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="period">period</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="num_titles">num_titles</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="total_runtime_hours">total_runtime_hours</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="period" class="gt_row gt_left">2023H1</td>
+<td headers="num_titles" class="gt_row gt_right">18,126</td>
+<td headers="total_runtime_hours" class="gt_row gt_right">43,717</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2023H2</td>
+<td headers="num_titles" class="gt_row gt_right">6,574</td>
+<td headers="total_runtime_hours" class="gt_row gt_right">50,117</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2024H1</td>
+<td headers="num_titles" class="gt_row gt_right">6,775</td>
+<td headers="total_runtime_hours" class="gt_row gt_right">51,774</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2024H2</td>
+<td headers="num_titles" class="gt_row gt_right">6,854</td>
+<td headers="total_runtime_hours" class="gt_row gt_right">53,615</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2025H1</td>
+<td headers="num_titles" class="gt_row gt_right">7,473</td>
+<td headers="total_runtime_hours" class="gt_row gt_right">58,374</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2025H2</td>
+<td headers="num_titles" class="gt_row gt_right">7,712</td>
+<td headers="total_runtime_hours" class="gt_row gt_right">59,714</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2026H1</td>
+<td headers="num_titles" class="gt_row gt_right">8,163</td>
+<td headers="total_runtime_hours" class="gt_row gt_right">62,855</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+<pre class="r"><code>#Q3
+NETFLIX_DATA |&gt;
+  group_by(title) |&gt;
+  filter(n() == 7) |&gt;
+  summarize(
+    mean_hours = mean(hours_viewed, na.rm = TRUE),
+    min_hours = min(hours_viewed, na.rm = TRUE),
+    sd_hours = sd(hours_viewed, na.rm = TRUE)
+  ) |&gt;
+  slice_max(order_by = min_hours, n = 5) |&gt;
+  gt() |&gt;
+  fmt_number(columns = c(mean_hours, min_hours, sd_hours), decimals = 0)</code></pre>
+<div id="mdpfmgpjhz" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#mdpfmgpjhz table {
+font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+}
+#mdpfmgpjhz thead, #mdpfmgpjhz tbody, #mdpfmgpjhz tfoot, #mdpfmgpjhz tr, #mdpfmgpjhz td, #mdpfmgpjhz th {
+border-style: none;
+}
+#mdpfmgpjhz p {
+margin: 0;
+padding: 0;
+}
+#mdpfmgpjhz .gt_table {
+display: table;
+border-collapse: collapse;
+line-height: normal;
+margin-left: auto;
+margin-right: auto;
+color: #333333;
+font-size: 16px;
+font-weight: normal;
+font-style: normal;
+background-color: #FFFFFF;
+width: auto;
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #A8A8A8;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #A8A8A8;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+}
+#mdpfmgpjhz .gt_caption {
+padding-top: 4px;
+padding-bottom: 4px;
+}
+#mdpfmgpjhz .gt_title {
+color: #333333;
+font-size: 125%;
+font-weight: initial;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-color: #FFFFFF;
+border-bottom-width: 0;
+}
+#mdpfmgpjhz .gt_subtitle {
+color: #333333;
+font-size: 85%;
+font-weight: initial;
+padding-top: 3px;
+padding-bottom: 5px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-color: #FFFFFF;
+border-top-width: 0;
+}
+#mdpfmgpjhz .gt_heading {
+background-color: #FFFFFF;
+text-align: center;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+#mdpfmgpjhz .gt_bottom_border {
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+#mdpfmgpjhz .gt_col_headings {
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+#mdpfmgpjhz .gt_col_heading {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 6px;
+padding-left: 5px;
+padding-right: 5px;
+overflow-x: hidden;
+}
+#mdpfmgpjhz .gt_column_spanner_outer {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+padding-top: 0;
+padding-bottom: 0;
+padding-left: 4px;
+padding-right: 4px;
+}
+#mdpfmgpjhz .gt_column_spanner_outer:first-child {
+padding-left: 0;
+}
+#mdpfmgpjhz .gt_column_spanner_outer:last-child {
+padding-right: 0;
+}
+#mdpfmgpjhz .gt_column_spanner {
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 5px;
+overflow-x: hidden;
+display: inline-block;
+width: 100%;
+}
+#mdpfmgpjhz .gt_spanner_row {
+border-bottom-style: hidden;
+}
+#mdpfmgpjhz .gt_group_heading {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+text-align: left;
+}
+#mdpfmgpjhz .gt_empty_group_heading {
+padding: 0.5px;
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+vertical-align: middle;
+}
+#mdpfmgpjhz .gt_from_md > :first-child {
+margin-top: 0;
+}
+#mdpfmgpjhz .gt_from_md > :last-child {
+margin-bottom: 0;
+}
+#mdpfmgpjhz .gt_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+margin: 10px;
+border-top-style: solid;
+border-top-width: 1px;
+border-top-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+overflow-x: hidden;
+}
+#mdpfmgpjhz .gt_stub {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+}
+#mdpfmgpjhz .gt_stub_row_group {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+vertical-align: top;
+}
+#mdpfmgpjhz .gt_row_group_first td {
+border-top-width: 2px;
+}
+#mdpfmgpjhz .gt_row_group_first th {
+border-top-width: 2px;
+}
+#mdpfmgpjhz .gt_summary_row {
+color: #333333;
+background-color: #FFFFFF;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#mdpfmgpjhz .gt_first_summary_row {
+border-top-style: solid;
+border-top-color: #D3D3D3;
+}
+#mdpfmgpjhz .gt_first_summary_row.thick {
+border-top-width: 2px;
+}
+#mdpfmgpjhz .gt_last_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+#mdpfmgpjhz .gt_grand_summary_row {
+color: #333333;
+background-color: #FFFFFF;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#mdpfmgpjhz .gt_first_grand_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-style: double;
+border-top-width: 6px;
+border-top-color: #D3D3D3;
+}
+#mdpfmgpjhz .gt_last_grand_summary_row_top {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: double;
+border-bottom-width: 6px;
+border-bottom-color: #D3D3D3;
+}
+#mdpfmgpjhz .gt_striped {
+background-color: rgba(128, 128, 128, 0.05);
+}
+#mdpfmgpjhz .gt_table_body {
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+#mdpfmgpjhz .gt_footnotes {
+color: #333333;
+background-color: #FFFFFF;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+#mdpfmgpjhz .gt_footnote {
+margin: 0px;
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#mdpfmgpjhz .gt_sourcenotes {
+color: #333333;
+background-color: #FFFFFF;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+#mdpfmgpjhz .gt_sourcenote {
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#mdpfmgpjhz .gt_left {
+text-align: left;
+}
+#mdpfmgpjhz .gt_center {
+text-align: center;
+}
+#mdpfmgpjhz .gt_right {
+text-align: right;
+font-variant-numeric: tabular-nums;
+}
+#mdpfmgpjhz .gt_font_normal {
+font-weight: normal;
+}
+#mdpfmgpjhz .gt_font_bold {
+font-weight: bold;
+}
+#mdpfmgpjhz .gt_font_italic {
+font-style: italic;
+}
+#mdpfmgpjhz .gt_super {
+font-size: 65%;
+}
+#mdpfmgpjhz .gt_footnote_marks {
+font-size: 75%;
+vertical-align: 0.4em;
+position: initial;
+}
+#mdpfmgpjhz .gt_asterisk {
+font-size: 100%;
+vertical-align: 0;
+}
+#mdpfmgpjhz .gt_indent_1 {
+text-indent: 5px;
+}
+#mdpfmgpjhz .gt_indent_2 {
+text-indent: 10px;
+}
+#mdpfmgpjhz .gt_indent_3 {
+text-indent: 15px;
+}
+#mdpfmgpjhz .gt_indent_4 {
+text-indent: 20px;
+}
+#mdpfmgpjhz .gt_indent_5 {
+text-indent: 25px;
+}
+#mdpfmgpjhz .katex-display {
+display: inline-flex !important;
+margin-bottom: 0.75em !important;
+}
+#mdpfmgpjhz div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+height: 0px !important;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="title">title</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="mean_hours">mean_hours</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="min_hours">min_hours</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="sd_hours">sd_hours</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="title" class="gt_row gt_left">Pablo Escobar, el patron del mal: Season 1</td>
+<td headers="mean_hours" class="gt_row gt_right">136,214,286</td>
+<td headers="min_hours" class="gt_row gt_right">105,500,000</td>
+<td headers="sd_hours" class="gt_row gt_right">22,860,842</td></tr>
+    <tr><td headers="title" class="gt_row gt_left">Chiquititas (2013)</td>
+<td headers="mean_hours" class="gt_row gt_right">120,014,286</td>
+<td headers="min_hours" class="gt_row gt_right">105,000,000</td>
+<td headers="sd_hours" class="gt_row gt_right">19,421,588</td></tr>
+    <tr><td headers="title" class="gt_row gt_left">Stranger Things 4</td>
+<td headers="mean_hours" class="gt_row gt_right">207,385,714</td>
+<td headers="min_hours" class="gt_row gt_right">97,100,000</td>
+<td headers="sd_hours" class="gt_row gt_right">171,675,823</td></tr>
+    <tr><td headers="title" class="gt_row gt_left">Suits (2011): Season 1</td>
+<td headers="mean_hours" class="gt_row gt_right">126,885,714</td>
+<td headers="min_hours" class="gt_row gt_right">80,900,000</td>
+<td headers="sd_hours" class="gt_row gt_right">59,209,724</td></tr>
+    <tr><td headers="title" class="gt_row gt_left">Breaking Bad: Season 2</td>
+<td headers="mean_hours" class="gt_row gt_right">91,614,286</td>
+<td headers="min_hours" class="gt_row gt_right">78,500,000</td>
+<td headers="sd_hours" class="gt_row gt_right">11,977,399</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+<pre class="r"><code>#Q4
+NETFLIX_DATA |&gt;
+  mutate(is_show = str_detect(title, &quot;Season&quot;) | (!is.na(runtime) &amp; runtime &gt;= 240)) |&gt;
+  group_by(period) |&gt;
+  summarize(
+    fraction_show = sum(hours_viewed[is_show], na.rm = TRUE) / sum(hours_viewed, na.rm = TRUE),
+    fraction_movie = 1 - fraction_show) |&gt;
+  gt() |&gt;
+  fmt_percent(columns = c(fraction_show, fraction_movie), decimals = 2)</code></pre>
+<div id="wovmmxqqxh" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#wovmmxqqxh table {
+font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+}
+#wovmmxqqxh thead, #wovmmxqqxh tbody, #wovmmxqqxh tfoot, #wovmmxqqxh tr, #wovmmxqqxh td, #wovmmxqqxh th {
+border-style: none;
+}
+#wovmmxqqxh p {
+margin: 0;
+padding: 0;
+}
+#wovmmxqqxh .gt_table {
+display: table;
+border-collapse: collapse;
+line-height: normal;
+margin-left: auto;
+margin-right: auto;
+color: #333333;
+font-size: 16px;
+font-weight: normal;
+font-style: normal;
+background-color: #FFFFFF;
+width: auto;
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #A8A8A8;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #A8A8A8;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+}
+#wovmmxqqxh .gt_caption {
+padding-top: 4px;
+padding-bottom: 4px;
+}
+#wovmmxqqxh .gt_title {
+color: #333333;
+font-size: 125%;
+font-weight: initial;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-color: #FFFFFF;
+border-bottom-width: 0;
+}
+#wovmmxqqxh .gt_subtitle {
+color: #333333;
+font-size: 85%;
+font-weight: initial;
+padding-top: 3px;
+padding-bottom: 5px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-color: #FFFFFF;
+border-top-width: 0;
+}
+#wovmmxqqxh .gt_heading {
+background-color: #FFFFFF;
+text-align: center;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+#wovmmxqqxh .gt_bottom_border {
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+#wovmmxqqxh .gt_col_headings {
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+#wovmmxqqxh .gt_col_heading {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 6px;
+padding-left: 5px;
+padding-right: 5px;
+overflow-x: hidden;
+}
+#wovmmxqqxh .gt_column_spanner_outer {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+padding-top: 0;
+padding-bottom: 0;
+padding-left: 4px;
+padding-right: 4px;
+}
+#wovmmxqqxh .gt_column_spanner_outer:first-child {
+padding-left: 0;
+}
+#wovmmxqqxh .gt_column_spanner_outer:last-child {
+padding-right: 0;
+}
+#wovmmxqqxh .gt_column_spanner {
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 5px;
+overflow-x: hidden;
+display: inline-block;
+width: 100%;
+}
+#wovmmxqqxh .gt_spanner_row {
+border-bottom-style: hidden;
+}
+#wovmmxqqxh .gt_group_heading {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+text-align: left;
+}
+#wovmmxqqxh .gt_empty_group_heading {
+padding: 0.5px;
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+vertical-align: middle;
+}
+#wovmmxqqxh .gt_from_md > :first-child {
+margin-top: 0;
+}
+#wovmmxqqxh .gt_from_md > :last-child {
+margin-bottom: 0;
+}
+#wovmmxqqxh .gt_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+margin: 10px;
+border-top-style: solid;
+border-top-width: 1px;
+border-top-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+overflow-x: hidden;
+}
+#wovmmxqqxh .gt_stub {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+}
+#wovmmxqqxh .gt_stub_row_group {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+vertical-align: top;
+}
+#wovmmxqqxh .gt_row_group_first td {
+border-top-width: 2px;
+}
+#wovmmxqqxh .gt_row_group_first th {
+border-top-width: 2px;
+}
+#wovmmxqqxh .gt_summary_row {
+color: #333333;
+background-color: #FFFFFF;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#wovmmxqqxh .gt_first_summary_row {
+border-top-style: solid;
+border-top-color: #D3D3D3;
+}
+#wovmmxqqxh .gt_first_summary_row.thick {
+border-top-width: 2px;
+}
+#wovmmxqqxh .gt_last_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+#wovmmxqqxh .gt_grand_summary_row {
+color: #333333;
+background-color: #FFFFFF;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#wovmmxqqxh .gt_first_grand_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-style: double;
+border-top-width: 6px;
+border-top-color: #D3D3D3;
+}
+#wovmmxqqxh .gt_last_grand_summary_row_top {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: double;
+border-bottom-width: 6px;
+border-bottom-color: #D3D3D3;
+}
+#wovmmxqqxh .gt_striped {
+background-color: rgba(128, 128, 128, 0.05);
+}
+#wovmmxqqxh .gt_table_body {
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+#wovmmxqqxh .gt_footnotes {
+color: #333333;
+background-color: #FFFFFF;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+#wovmmxqqxh .gt_footnote {
+margin: 0px;
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#wovmmxqqxh .gt_sourcenotes {
+color: #333333;
+background-color: #FFFFFF;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+#wovmmxqqxh .gt_sourcenote {
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#wovmmxqqxh .gt_left {
+text-align: left;
+}
+#wovmmxqqxh .gt_center {
+text-align: center;
+}
+#wovmmxqqxh .gt_right {
+text-align: right;
+font-variant-numeric: tabular-nums;
+}
+#wovmmxqqxh .gt_font_normal {
+font-weight: normal;
+}
+#wovmmxqqxh .gt_font_bold {
+font-weight: bold;
+}
+#wovmmxqqxh .gt_font_italic {
+font-style: italic;
+}
+#wovmmxqqxh .gt_super {
+font-size: 65%;
+}
+#wovmmxqqxh .gt_footnote_marks {
+font-size: 75%;
+vertical-align: 0.4em;
+position: initial;
+}
+#wovmmxqqxh .gt_asterisk {
+font-size: 100%;
+vertical-align: 0;
+}
+#wovmmxqqxh .gt_indent_1 {
+text-indent: 5px;
+}
+#wovmmxqqxh .gt_indent_2 {
+text-indent: 10px;
+}
+#wovmmxqqxh .gt_indent_3 {
+text-indent: 15px;
+}
+#wovmmxqqxh .gt_indent_4 {
+text-indent: 20px;
+}
+#wovmmxqqxh .gt_indent_5 {
+text-indent: 25px;
+}
+#wovmmxqqxh .katex-display {
+display: inline-flex !important;
+margin-bottom: 0.75em !important;
+}
+#wovmmxqqxh div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+height: 0px !important;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="period">period</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="fraction_show">fraction_show</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="fraction_movie">fraction_movie</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="period" class="gt_row gt_left">2023H1</td>
+<td headers="fraction_show" class="gt_row gt_right">69.18%</td>
+<td headers="fraction_movie" class="gt_row gt_right">30.82%</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2023H2</td>
+<td headers="fraction_show" class="gt_row gt_right">95.79%</td>
+<td headers="fraction_movie" class="gt_row gt_right">4.21%</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2024H1</td>
+<td headers="fraction_show" class="gt_row gt_right">95.71%</td>
+<td headers="fraction_movie" class="gt_row gt_right">4.29%</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2024H2</td>
+<td headers="fraction_show" class="gt_row gt_right">96.47%</td>
+<td headers="fraction_movie" class="gt_row gt_right">3.53%</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2025H1</td>
+<td headers="fraction_show" class="gt_row gt_right">95.11%</td>
+<td headers="fraction_movie" class="gt_row gt_right">4.89%</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2025H2</td>
+<td headers="fraction_show" class="gt_row gt_right">94.76%</td>
+<td headers="fraction_movie" class="gt_row gt_right">5.24%</td></tr>
+    <tr><td headers="period" class="gt_row gt_left">2026H1</td>
+<td headers="fraction_show" class="gt_row gt_right">94.75%</td>
+<td headers="fraction_movie" class="gt_row gt_right">5.25%</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+<pre class="r"><code>#Q5
+NETFLIX_DATA |&gt;
+  group_by(type = if_else(str_detect(title, &quot;Live&quot;), &quot;Live Event&quot;, &quot;Pre-taped&quot;)) |&gt;
+  summarize(
+    mean_hours = mean(hours_viewed, na.rm = TRUE),
+    top_tier = max(hours_viewed, na.rm = TRUE)
+  ) |&gt;
+  gt() |&gt;
+  fmt_number(columns = c(mean_hours, top_tier), decimals = 0)</code></pre>
+<div id="cypialeeuw" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#cypialeeuw table {
+font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+}
+#cypialeeuw thead, #cypialeeuw tbody, #cypialeeuw tfoot, #cypialeeuw tr, #cypialeeuw td, #cypialeeuw th {
+border-style: none;
+}
+#cypialeeuw p {
+margin: 0;
+padding: 0;
+}
+#cypialeeuw .gt_table {
+display: table;
+border-collapse: collapse;
+line-height: normal;
+margin-left: auto;
+margin-right: auto;
+color: #333333;
+font-size: 16px;
+font-weight: normal;
+font-style: normal;
+background-color: #FFFFFF;
+width: auto;
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #A8A8A8;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #A8A8A8;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+}
+#cypialeeuw .gt_caption {
+padding-top: 4px;
+padding-bottom: 4px;
+}
+#cypialeeuw .gt_title {
+color: #333333;
+font-size: 125%;
+font-weight: initial;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-color: #FFFFFF;
+border-bottom-width: 0;
+}
+#cypialeeuw .gt_subtitle {
+color: #333333;
+font-size: 85%;
+font-weight: initial;
+padding-top: 3px;
+padding-bottom: 5px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-color: #FFFFFF;
+border-top-width: 0;
+}
+#cypialeeuw .gt_heading {
+background-color: #FFFFFF;
+text-align: center;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+#cypialeeuw .gt_bottom_border {
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+#cypialeeuw .gt_col_headings {
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+#cypialeeuw .gt_col_heading {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 6px;
+padding-left: 5px;
+padding-right: 5px;
+overflow-x: hidden;
+}
+#cypialeeuw .gt_column_spanner_outer {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+padding-top: 0;
+padding-bottom: 0;
+padding-left: 4px;
+padding-right: 4px;
+}
+#cypialeeuw .gt_column_spanner_outer:first-child {
+padding-left: 0;
+}
+#cypialeeuw .gt_column_spanner_outer:last-child {
+padding-right: 0;
+}
+#cypialeeuw .gt_column_spanner {
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 5px;
+overflow-x: hidden;
+display: inline-block;
+width: 100%;
+}
+#cypialeeuw .gt_spanner_row {
+border-bottom-style: hidden;
+}
+#cypialeeuw .gt_group_heading {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+text-align: left;
+}
+#cypialeeuw .gt_empty_group_heading {
+padding: 0.5px;
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+vertical-align: middle;
+}
+#cypialeeuw .gt_from_md > :first-child {
+margin-top: 0;
+}
+#cypialeeuw .gt_from_md > :last-child {
+margin-bottom: 0;
+}
+#cypialeeuw .gt_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+margin: 10px;
+border-top-style: solid;
+border-top-width: 1px;
+border-top-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+overflow-x: hidden;
+}
+#cypialeeuw .gt_stub {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+}
+#cypialeeuw .gt_stub_row_group {
+color: #333333;
+background-color: #FFFFFF;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+vertical-align: top;
+}
+#cypialeeuw .gt_row_group_first td {
+border-top-width: 2px;
+}
+#cypialeeuw .gt_row_group_first th {
+border-top-width: 2px;
+}
+#cypialeeuw .gt_summary_row {
+color: #333333;
+background-color: #FFFFFF;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#cypialeeuw .gt_first_summary_row {
+border-top-style: solid;
+border-top-color: #D3D3D3;
+}
+#cypialeeuw .gt_first_summary_row.thick {
+border-top-width: 2px;
+}
+#cypialeeuw .gt_last_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+#cypialeeuw .gt_grand_summary_row {
+color: #333333;
+background-color: #FFFFFF;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#cypialeeuw .gt_first_grand_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-style: double;
+border-top-width: 6px;
+border-top-color: #D3D3D3;
+}
+#cypialeeuw .gt_last_grand_summary_row_top {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: double;
+border-bottom-width: 6px;
+border-bottom-color: #D3D3D3;
+}
+#cypialeeuw .gt_striped {
+background-color: rgba(128, 128, 128, 0.05);
+}
+#cypialeeuw .gt_table_body {
+border-top-style: solid;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+#cypialeeuw .gt_footnotes {
+color: #333333;
+background-color: #FFFFFF;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+#cypialeeuw .gt_footnote {
+margin: 0px;
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#cypialeeuw .gt_sourcenotes {
+color: #333333;
+background-color: #FFFFFF;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+#cypialeeuw .gt_sourcenote {
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+#cypialeeuw .gt_left {
+text-align: left;
+}
+#cypialeeuw .gt_center {
+text-align: center;
+}
+#cypialeeuw .gt_right {
+text-align: right;
+font-variant-numeric: tabular-nums;
+}
+#cypialeeuw .gt_font_normal {
+font-weight: normal;
+}
+#cypialeeuw .gt_font_bold {
+font-weight: bold;
+}
+#cypialeeuw .gt_font_italic {
+font-style: italic;
+}
+#cypialeeuw .gt_super {
+font-size: 65%;
+}
+#cypialeeuw .gt_footnote_marks {
+font-size: 75%;
+vertical-align: 0.4em;
+position: initial;
+}
+#cypialeeuw .gt_asterisk {
+font-size: 100%;
+vertical-align: 0;
+}
+#cypialeeuw .gt_indent_1 {
+text-indent: 5px;
+}
+#cypialeeuw .gt_indent_2 {
+text-indent: 10px;
+}
+#cypialeeuw .gt_indent_3 {
+text-indent: 15px;
+}
+#cypialeeuw .gt_indent_4 {
+text-indent: 20px;
+}
+#cypialeeuw .gt_indent_5 {
+text-indent: 25px;
+}
+#cypialeeuw .katex-display {
+display: inline-flex !important;
+margin-bottom: 0.75em !important;
+}
+#cypialeeuw div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+height: 0px !important;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="type">type</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="mean_hours">mean_hours</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="top_tier">top_tier</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="type" class="gt_row gt_left">Live Event</td>
+<td headers="mean_hours" class="gt_row gt_right">1,968,750</td>
+<td headers="top_tier" class="gt_row gt_right">41,300,000</td></tr>
+    <tr><td headers="type" class="gt_row gt_left">Pre-taped</td>
+<td headers="mean_hours" class="gt_row gt_right">8,298,585</td>
+<td headers="top_tier" class="gt_row gt_right">964,100,000</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+<hr />
+<hr />
+</div>
+<div id="corporate-strategy-memo" class="section level3">
+<h3>Corporate Strategy Memo</h3>
+<p><strong>MEMORANDUM</strong></p>
+<p><strong>TO:</strong> Netflix Leadership<br />
+<strong>FROM:</strong> Content Strategy &amp; Data Analytics<br />
+<strong>SUBJECT:</strong> Strategic Content for 2027 and Beyond</p>
+<div id="executive-summary" class="section level4">
+<h4>Executive Summary</h4>
+<p>This memo outlines strategic recommendations for Netflix’s content
+strategies for 2027 and beyond. Based on actual viewership data,
+investment should prioritize episodic series rather than movies. Live
+event should be used to drive new user sign-ups rather than to build
+overall watch time. Additionally, the platform must retain classic shows
+to prevent existing subscribers from cancelling their memberships after
+finishing new releases.</p>
+</div>
+<div id="data-insights" class="section level4">
+<h4>Data Insights</h4>
+<p><strong>Episodic Series Drive the Core of Viewership</strong></p>
+<p>Episodic series are the primary drivers of platform viewership. Since
+data standardization began in the 2023H2, episodic series have
+consistently accounted for 94.75% to 96.47% of total watch time across
+the platform, while movies represent only 3.53% to 5.25% of the share.
+Since a single season of a series comprises multiple episodes, viewers
+often binge-watch for hours on end, generating significantly more
+effective watch time than movies, which are typically completed in one
+or two hours.</p>
+<p><strong>Catalog Expansion and Classic Series</strong></p>
+<p>Netflix’s catalog has grown steadily, which expanding from 6,574
+titles (50,117 total hours) in the 2023H2 to 8,163 titles (62,855 total
+hours) in the 2026H1, an increase of 24.2% in title count and 25.4% in
+total duration. Beyond the new blockbuster hits released periodically,
+the platform relies heavily on classic shows. For example, <em>Pablo
+Escobar, el patron del mal: Season 1</em> has generated over 105,500,000
+hours of viewership within the recorded periods, despite having
+premiered years ago. These classic shows are crucial for retaining the
+audience during gaps between major new releases.</p>
+<p><strong>The Vast Gap Between Live Event and Pre-taped</strong></p>
+<p>While live event generates significant buzz and conversation on
+social media, the data reveals that most of the viewership remains
+concentrated on standard pre-taped. On average, pre-taped garners
+approximately 8,298,585 hours of viewing time, while live event average
+less than 1,968,750 hours, which means pre-taped generates more than 4.2
+times the viewership of live event. The disparity is even more striking
+when comparing top-performing hits, the most popular pre-taped show
+reached 964,100,000 hours for a single installment, while the most
+popular live event garnered only 41,300,000 hours. Once the day of the
+live event passes, few viewers revisit the replay, unlike standard
+series, live event cannot accumulate viewing hours over the long
+term.</p>
+</div>
+<div id="strategic-recommendations-for-2027-and-beyond" class="section level4">
+<h4>Strategic Recommendations for 2027 and Beyond</h4>
+<p><strong>Primary investment toward episodic series IPs</strong></p>
+<p>Reduce investment in standalone movies, which often have moderate
+costs but lose relevance after a single viewing. Therefore, we should
+concentrate the budget on multi-season shows, as episodic series account
+for approximately 95% of total platform viewership.</p>
+<p><strong>Treat live event as sign-up drivers rather than watch-time
+engines</strong></p>
+<p>The primary objective of live event should be to attract new viewers
+who do not typically watch Netflix, encouraging them to subscribe on
+event day. We should avoid spending money on small, low-profile live
+event shows. Instead, invest only in a select few marquee events that
+draw a massive global audience.</p>
+<p><strong>Secure long-term licensing for classic shows with high
+guaranteed viewership</strong></p>
+<p>Maintain reliable licensing agreements for multi-episode comfort
+staples with guaranteed viewership floors. These shows keep subscribers
+engaged daily between flagship releases, directly minimizing
+subscription cancellations.</p>
+<hr />
+</div>
+</div>
+<div id="ai-usage-statement" class="section level3">
+<h3>AI Usage Statement</h3>
+<p>Gemini was used to help troubleshoot R code, specifically for using
+vectorized if_else( ) instead of standard if…else statements to
+categorize data, and gt( ) part. Additionally, it was used to provide
+background context and brainstorm ideas for the open-ended prompt. All
+non-code text and analytical interpretations were written without
+generative AI.</p>
 </div>
 
 
