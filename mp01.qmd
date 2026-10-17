@@ -4,6 +4,8 @@ title: "Mini-Project #01"
 
 ```{r}
 #| echo: false
+#| message: false
+#| warning: false
 #' Acquire Netflix What We Watched Reports
 #' 
 #' This function will acquire and standardize all data for MP#01
@@ -353,5 +355,9 @@ Maintain reliable licensing agreements for multi-episode comfort staples with gu
 
 ---
 
-### AI Usage Statement
-Gemini was used to help troubleshoot R code, specifically for using vectorized if_else( ) instead of standard if...else statements to categorize data, and gt( ) part. Additionally, it was used to provide background context and brainstorm ideas for the open-ended prompt. All non-code text and analytical interpretations were written without generative AI.
+<div class="callout callout-style-default callout-note callout-titled">
+<h2 style="font-size: 1.75rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 1rem; color: #333;">AI Usage Statement</h2>
+<div class="callout-body-container callout-body">
+<p>Gemini was used to help troubleshoot R code, specifically for using vectorized if_else( ) instead of standard if...else statements to categorize data, and gt( ) part. Additionally, it was used to provide background context and brainstorm ideas for the open-ended prompt. All non-code text and analytical interpretations were written without generative AI.</p>
+</div>
+</div>
