@@ -1,5 +1,14 @@
 ---
 title: "Mini-Project #01"
+author: "Jinxia Zou"
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    code-summary: "Show code"
+    code-tools: true
+    code-fold: true
 ---
 
 ```{r}
@@ -69,7 +78,7 @@ load_netflix_data <- function(){
     mutate(year=str_sub(period, 1, 4), 
            half=str_sub(period, start=6), 
            period_start = make_date(year, if_else(half==1, 1, 7), 1), 
-           period_end = make_date(year, if_else(half==1, 7, 12), if_else(half==1, 30, 31))) |> 
+           period_end = make_date(year, if_else(half==1, 6, 12), if_else(half==1, 30, 31))) |> 
     filter(!is.na(`Hours Viewed`)) |> 
     mutate(live_event = !is.na(Runtime) & str_detect(Runtime, "\\d+:\\d+\\*"), 
            clean_time = str_remove(Runtime, fixed("*")),
@@ -119,7 +128,7 @@ skim(NETFLIX_DATA)
 ```
 
 ### Initial Observations
-1. The dataset comprises 11 variables and a total of 61,892 records. All column names consist solely of alphanumeric characters, begin with a lowercase letter, and use underscores o separate words.
+1. The dataset comprises 11 variables and a total of 61,892 records. All column names consist solely of alphanumeric characters, begin with a lowercase letter, and use underscores to separate words.
 2. Missing values exist in the `runtime` and `views` fields. This stems from inconsistencies in the raw data reported by Netflix, specific durations were not recorded for some titles, making it impossible to calculate the corresponding view counts. Missing records also appear in the `release_date` field, as this information was not always available.
 3. Both `hours_viewed` and `views` exhibit extreme positive skewness, sparklines reveal that the data is heavily concentrated near the minimum value. For `hours_viewed`, 75% of the titles fall within the 6.4 million-hour range, yet the maximum value soars to 964,100,000 hours. Similarly, for `views`, 75% of the titles fall within 1.2 million views, while the maximum reaches 144,800,000 views.
 
@@ -221,7 +230,7 @@ NETFLIX_DATA |>
 #Q3
 NETFLIX_DATA |>
   group_by(title) |>
-  filter(n() == 7) |>
+  filter(n_distinct(period) == n_distinct(NETFLIX_DATA$period)) |>
   summarize(
     mean_hours = mean(hours_viewed, na.rm = TRUE),
     min_hours = min(hours_viewed, na.rm = TRUE),
@@ -243,7 +252,7 @@ NETFLIX_DATA |>
 
 #Q5
 NETFLIX_DATA |>
-  group_by(type = if_else(str_detect(title, "Live"), "Live Event", "Pre-taped")) |>
+  group_by(type = if_else(live_event, "Live Event", "Pre-taped")) |>
   summarize(
     mean_hours = mean(hours_viewed, na.rm = TRUE),
     top_tier = max(hours_viewed, na.rm = TRUE)
@@ -284,13 +293,13 @@ hours_growth <- (catalog_2026h1$runtime - catalog_2023h2$runtime) / catalog_2023
 
 staple_top <- NETFLIX_DATA |>
   group_by(title) |>
-  filter(n() == 7) |>
+  filter(n_distinct(period) == n_distinct(NETFLIX_DATA$period)) |>
   summarize(min_hours = min(hours_viewed, na.rm = TRUE)) |>
   slice_max(order_by = min_hours, n = 1)
 
 # The Vast Gap Between Live Event and Pre-taped
 live_summary <- NETFLIX_DATA |>
-  group_by(type = if_else(str_detect(title, "Live"), "Live Event", "Pre-taped")) |>
+  group_by(type = if_else(live_event, "Live Event", "Pre-taped")) |>
   summarize(
     mean_hours = mean(hours_viewed, na.rm = TRUE),
     top_tier = max(hours_viewed, na.rm = TRUE)
@@ -303,7 +312,6 @@ pretaped_top <- live_summary$top_tier[live_summary$type == "Pre-taped"]
 ratio_mean <- pretaped_mean / live_mean
 ```
 
----
 
 ### Corporate Strategy Memo
 
@@ -319,17 +327,17 @@ This memo outlines strategic recommendations for Netflix’s content strategies 
 
 #### Data Insights
 
-**Episodic Series Drive the Core of Viewership**
+- Episodic Series Drive the Core of Viewership
 
 
 Episodic series are the primary drivers of platform viewership. Since data standardization began in the 2023H2, episodic series have consistently accounted for `r percent(min_show, accuracy = 0.01)` to `r percent(max_show, accuracy = 0.01)` of total watch time across the platform, while movies represent only `r percent(min_movie, accuracy = 0.01)` to `r percent(max_movie, accuracy = 0.01)` of the share. Since a single season of a series comprises multiple episodes, viewers often binge-watch for hours on end, generating significantly more effective watch time than movies, which are typically completed in one or two hours.
 
-**Catalog Expansion and Classic Series**
+- Catalog Expansion and Classic Series
 
 
 Netflix’s catalog has grown steadily, which expanding from `r comma(catalog_2023h2$titles)` titles (`r comma(catalog_2023h2$runtime)` total hours) in the 2023H2 to `r comma(catalog_2026h1$titles)` titles (`r comma(catalog_2026h1$runtime)` total hours) in the 2026H1, an increase of `r percent(titles_growth, accuracy = 0.1)` in title count and `r percent(hours_growth, accuracy = 0.1)` in total duration. Beyond the new blockbuster hits released periodically, the platform relies heavily on classic shows. For example, *`r staple_top$title`* has generated over `r comma(staple_top$min_hours)` hours of viewership within the recorded periods, despite having premiered years ago. These classic shows are crucial for retaining the audience during gaps between major new releases. 
 
-**The Vast Gap Between Live Event and Pre-taped**
+- The Vast Gap Between Live Event and Pre-taped
 
 
 While live event generates significant buzz and conversation on social media, the data reveals that most of the viewership remains concentrated on standard pre-taped. On average, pre-taped garners approximately `r comma(pretaped_mean)` hours of viewing time, while live event average less than `r comma(live_mean)` hours, which means pre-taped generates more than `r round(ratio_mean, 1)` times the viewership of live event. The disparity is even more striking when comparing top-performing hits, the most popular pre-taped show reached `r comma(pretaped_top)` hours for a single installment, while the most popular live event garnered only `r comma(live_top)` hours. Once the day of the live event passes, few viewers revisit the replay, unlike standard series, live event cannot accumulate viewing hours over the long term.
@@ -338,26 +346,23 @@ While live event generates significant buzz and conversation on social media, th
 
 #### Strategic Recommendations for 2027 and Beyond
 
-**Primary investment toward episodic series IPs**
+- Primary investment toward episodic series IPs
 
 
 Reduce investment in standalone movies, which often have moderate costs but lose relevance after a single viewing. Therefore, we should concentrate the budget on multi-season shows, as episodic series account for approximately 95% of total platform viewership.
 
-**Treat live event as sign-up drivers rather than watch-time engines**
+- Treat live event as sign-up drivers rather than watch-time engines
 
 
 The primary objective of live event should be to attract new viewers who do not typically watch Netflix, encouraging them to subscribe on event day. We should avoid spending money on small, low-profile live event shows. Instead, invest only in a select few marquee events that draw a massive global audience.
 
-**Secure long-term licensing for classic shows with high guaranteed viewership**
+- Secure long-term licensing for classic shows with high guaranteed viewership
 
 
 Maintain reliable licensing agreements for multi-episode comfort staples with guaranteed viewership floors. These shows keep subscribers engaged daily between flagship releases, directly minimizing subscription cancellations.
 
 ---
 
-<div class="callout callout-style-default callout-note callout-titled">
-<h2 style="font-size: 1.75rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 1rem; color: #333;">AI Usage Statement</h2>
-<div class="callout-body-container callout-body">
-<p>Gemini was used to help troubleshoot R code, specifically for using vectorized if_else( ) instead of standard if...else statements to categorize data, and gt( ) part. Additionally, it was used to provide background context and brainstorm ideas for the open-ended prompt. All non-code text and analytical interpretations were written without generative AI.</p>
-</div>
-</div>
+::: {.callout-note title="AI Usage Statement" collapse="true"}
+Gemini was used to help troubleshoot R code, specifically for using vectorized if_else( ) instead of standard if...else statements to categorize data, and gt( ) part. Additionally, it was used to provide background context and brainstorm ideas for the open-ended prompt. All non-code text and analytical interpretations were written without generative AI.
+:::
