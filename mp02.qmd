@@ -653,7 +653,8 @@ bind_rows(award_greenest, award_worst) |>
 ```
 
 ```{r}
-#| echo: false
+#| warning: false
+#| message: false
 
 median_rate <- median(agency_emissions$co2_per_passenger_mile)
 green_rate <- award_greenest$co2_per_passenger_mile
@@ -680,7 +681,6 @@ about `r round(green_pct_lower, 1)`% below the median of
 ```{r}
 #| warning: false
 #| message: false
-#| echo: false
 #| fig-width: 9
 #| fig-height: 5
 
@@ -715,7 +715,6 @@ the high rate.
 ```{r}
 #| warning: false
 #| message: false
-#| echo: false
 #| fig-width: 9
 #| fig-height: 5
 
