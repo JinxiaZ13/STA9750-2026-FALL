@@ -21,3 +21,6 @@
 *bspf
 **/*bspf
 **/*.quarto_ipynb
+data/
+!docs/mp02_files/
+!docs/mp02_files/**
