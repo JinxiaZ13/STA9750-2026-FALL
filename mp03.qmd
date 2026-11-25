@@ -1,5 +1,729 @@
 ---
 title: "Mini-Project #03"
+author: "Jinxia Zou"
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    code-summary: "Show code"
+    code-tools: true
+    code-fold: true
 ---
+::: {.callout-note collapse="true"}
+## Data Loading and Cleaning
+```{r}
+#| warning: false
+#| message: false
+# Data Acquisition
 
-This is a placeholder for STA 9750 Mini-Project 3. Check back soon for more!
+library(tidyverse)
+library(tidycensus)
+library(sf)
+library(httr2)
+library(ggrepel)
+
+dir.create("data/mp03", recursive = TRUE, showWarnings = FALSE)
+cbsa_file <- "data/mp03/cbsa_chinese.csv"
+
+if (!file.exists(cbsa_file)) {
+  cbsa_pop <- get_acs(
+    geography = "cbsa",
+    variables = c(
+      chinese = "B02018_002",
+      total   = "B01003_001"
+    ),
+    year   = 2024,
+    survey = "acs1",
+    output = "tidy"
+  ) |>
+    select(-moe) |>
+    pivot_wider(names_from = variable, values_from = estimate)
+  
+  write_csv(cbsa_pop, cbsa_file)
+} else {
+  cbsa_pop <- read_csv(cbsa_file)
+}
+
+nyc_tract_file <- "data/mp03/nyc_tracts_chinese.gpkg"
+
+if (!file.exists(nyc_tract_file)) {
+  nyc_tracts <- get_acs(
+    geography = "tract",
+    variables = c(
+      chinese = "B02018_002",
+      total   = "B01003_001"
+    ),
+    state    = "NY",
+    county   = c("Bronx", "Kings", "New York", "Queens", "Richmond"),
+    year     = 2023,
+    survey   = "acs5",
+    geometry = TRUE,
+    output   = "tidy"
+  ) |>
+    select(-moe) |>
+    pivot_wider(names_from = variable, values_from = estimate)
+  
+  write_sf(nyc_tracts, nyc_tract_file)
+} else {
+  nyc_tracts <- read_sf(nyc_tract_file)
+}
+```
+```{r}
+# Task 3: Download, unzip, and load NYC 2020 NTA boundaries
+load_nyc_nta <- function() {
+  dir.create("data/mp03", recursive = TRUE, showWarnings = FALSE)
+  
+  nta_zip <- "data/mp03/nynta2020_shp.zip"
+  nta_dir <- "data/mp03/nynta2020_shp"
+  nta_url <- "https://s-media.nyc.gov/agencies/dcp/assets/files/zip/data-tools/bytes/neighborhood-tabulation-areas/nynta2020_26d.zip"
+  
+  if (!file.exists(nta_zip)) {
+    download.file(nta_url, destfile = nta_zip, mode = "wb")
+  }
+  
+  if (!dir.exists(nta_dir)) {
+    unzip(nta_zip, exdir = nta_dir)
+  }
+
+  shp_file <- list.files(nta_dir, pattern = "\\.shp$", full.names = TRUE, recursive = TRUE)[1]
+  
+  nyc_nta <- read_sf(shp_file) |>
+    select(BoroCode, BoroName, CountyFIPS, NTA2020, NTAName, NTAType, geometry)
+  
+  return(nyc_nta)
+}
+
+nyc_nta <- load_nyc_nta()
+```
+
+```{r}
+#| warning: false
+#| message: false
+# Task 4: Aggregate census tract population to the NTA level
+nyc_tracts_aligned <- st_transform(nyc_tracts, st_crs(nyc_nta))
+
+# Join each tract to the NTA with the largest spatial overlap
+nyc_nta_pop <- st_join(
+  nyc_tracts_aligned,
+  nyc_nta,
+  join = st_intersects,
+  largest = TRUE
+) |>
+  st_drop_geometry() |>
+  group_by(NTA2020) |>
+  summarize(
+    total_pop   = sum(total, na.rm = TRUE),
+    chinese_pop = sum(chinese, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  right_join(nyc_nta, by = "NTA2020") |>
+  st_as_sf() |>
+  mutate(
+    total_pop   = replace_na(total_pop, 0),
+    chinese_pop = replace_na(chinese_pop, 0),
+    pct_chinese = if_else(total_pop > 0, chinese_pop / total_pop, 0)
+  )
+```
+```{r}
+#| warning: false
+#| message: false
+# Task 5: Download PLUTO
+load_nyc_pluto <- function() {
+  dir.create("data/mp03", recursive = TRUE, showWarnings = FALSE)
+  pluto_file <- "data/mp03/nyc_pluto.csv"
+  
+  if (!file.exists(pluto_file)) {
+    base_url <- "https://data.cityofnewyork.us/resource/64uk-42ks.csv"
+    select_cols <- paste(
+      c(
+        "bbl", "borough", "bct2020", "landuse", "bldgclass",
+        "unitsres", "unitstotal", "resarea", "officearea",
+        "comarea", "bldgarea", "numfloors"
+      ),
+      collapse = ","
+    )
+    
+    limit <- 25000
+    offset <- 0
+    pages <- list()
+    page_idx <- 1
+    
+    repeat {
+      resp <- request(base_url) |>
+        req_url_query(
+          `$select` = select_cols,
+          `$order`  = "bbl",
+          `$limit`  = format(limit, scientific = FALSE),
+          `$offset` = format(offset, scientific = FALSE)
+        ) |>
+        req_retry(max_tries = 10, backoff = ~ 3) |>
+        req_perform()
+      
+      chunk <- read_csv(
+        resp_body_string(resp),
+        col_types = cols(.default = col_character()),
+        show_col_types = FALSE
+      )
+      
+      if (nrow(chunk) == 0) break
+      
+      pages[[page_idx]] <- chunk
+      if (nrow(chunk) < limit) break
+      
+      offset <- offset + limit
+      page_idx <- page_idx + 1
+      Sys.sleep(0.5)
+    }
+    
+    pluto_df <- bind_rows(pages) |>
+      mutate(
+        across(
+          c(unitsres, unitstotal, resarea, officearea, comarea, bldgarea, numfloors),
+          as.numeric
+        )
+      )
+    
+    write_csv(pluto_df, pluto_file)
+  }
+  
+  read_csv(
+    pluto_file,
+    col_types = cols(
+      bbl = col_character(),
+      borough = col_character(),
+      bct2020 = col_character(),
+      landuse = col_character(),
+      bldgclass = col_character(),
+      .default = col_double()
+    ),
+    show_col_types = FALSE
+  )
+}
+
+nyc_pluto <- load_nyc_pluto()
+```
+::: 
+
+### Exploratory Data Analysis
+#### Q1: Which NYC census tract has the most office floor area in NYC?
+```{r}
+#| warning: false
+#| message: false
+q1_office <- nyc_pluto |>
+  filter(!is.na(bct2020), nchar(bct2020) == 7) |>
+  mutate(
+    county_fips = case_when(
+      substr(bct2020, 1, 1) == "1" ~ "36061",
+      substr(bct2020, 1, 1) == "2" ~ "36005",
+      substr(bct2020, 1, 1) == "3" ~ "36047",
+      substr(bct2020, 1, 1) == "4" ~ "36081",
+      substr(bct2020, 1, 1) == "5" ~ "36085"
+    ),
+    GEOID = paste0(county_fips, substr(bct2020, 2, 7))
+  ) |>
+  filter(!is.na(county_fips)) |>
+  group_by(GEOID) |>
+  summarize(
+    total_office_area = sum(officearea, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  left_join(
+    nyc_tracts |> st_drop_geometry() |> select(GEOID, NAME),
+    by = "GEOID"
+  ) |>
+  arrange(desc(total_office_area))
+
+top_office_name <- q1_office$NAME[1]
+top_office_area <- scales::comma(q1_office$total_office_area[1])
+```
+The NYC census tract with the most office floor area is **`r top_office_name`**, which contains **`r top_office_area` square feet** of office space.
+
+#### Q2: Which NYC NTA has the most residential units (unitsses in PLUTO)?
+```{r}
+#| warning: false
+#| message: false
+tract_res_units <- nyc_pluto |>
+  filter(!is.na(bct2020), nchar(bct2020) == 7) |>
+  mutate(
+    county_fips = case_when(
+      substr(bct2020, 1, 1) == "1" ~ "36061",
+      substr(bct2020, 1, 1) == "2" ~ "36005",
+      substr(bct2020, 1, 1) == "3" ~ "36047",
+      substr(bct2020, 1, 1) == "4" ~ "36081",
+      substr(bct2020, 1, 1) == "5" ~ "36085"
+    ),
+    GEOID = paste0(county_fips, substr(bct2020, 2, 7))
+  ) |>
+  filter(!is.na(county_fips)) |>
+  group_by(GEOID) |>
+  summarize(
+    res_units = sum(unitsres, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+q2_nta_units <- nyc_tracts |>
+  st_transform(st_crs(nyc_nta)) |>
+  st_join(nyc_nta |> select(NTA2020, NTAName, BoroName), join = st_intersects, largest = TRUE) |>
+  st_drop_geometry() |>
+  left_join(tract_res_units, by = "GEOID") |>
+  group_by(NTAName, BoroName) |>
+  summarize(
+    total_res_units = sum(res_units, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  arrange(desc(total_res_units))
+
+# Table
+q2_nta_units |>
+  slice_head(n = 5) |>
+  mutate(total_res_units = scales::comma(total_res_units)) |>
+  knitr::kable(
+    col.names = c("Neighborhood (NTA)", "Borough", "Total Residential Units"),
+    caption = "Top 5 NYC Neighborhood Tabulation Areas by Total Residential Units"
+  )
+```
+
+#### Q3: Which NYC census tract has the highest population density, measured as population per square foot of residential space? Do your answers change if you measure by population per residential unit?
+```{r}
+#| warning: false
+#| message: false
+tract_res_metrics <- nyc_pluto |>
+  filter(!is.na(bct2020), nchar(bct2020) == 7) |>
+  mutate(
+    county_fips = case_when(
+      substr(bct2020, 1, 1) == "1" ~ "36061",
+      substr(bct2020, 1, 1) == "2" ~ "36005",
+      substr(bct2020, 1, 1) == "3" ~ "36047",
+      substr(bct2020, 1, 1) == "4" ~ "36081",
+      substr(bct2020, 1, 1) == "5" ~ "36085"
+    ),
+    GEOID = paste0(county_fips, substr(bct2020, 2, 7))
+  ) |>
+  filter(!is.na(county_fips)) |>
+  group_by(GEOID) |>
+  summarize(
+    res_area  = sum(resarea, na.rm = TRUE),
+    res_units = sum(unitsres, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+q3_density <- nyc_tracts |>
+  st_drop_geometry() |>
+  select(GEOID, NAME, total) |>
+  left_join(tract_res_metrics, by = "GEOID") |>
+  mutate(
+    pop_per_res_sqft = if_else(res_area > 0, total / res_area, NA_real_),
+    pop_per_res_unit = if_else(res_units > 0, total / res_units, NA_real_)
+  )
+
+# Top tract by population per residential sq ft
+top_sqft_tract <- q3_density |>
+  filter(total >= 100, res_area >= 10000) |>
+  arrange(desc(pop_per_res_sqft)) |>
+  slice_head(n = 1)
+
+# Top tract by population per residential unit
+top_unit_tract <- q3_density |>
+  filter(total >= 100, res_units >= 50) |>
+  arrange(desc(pop_per_res_unit)) |>
+  slice_head(n = 1)
+```
+After filtering out institutional and non-standard tracts with negligible recorded residential floor area or unit counts, **`r top_sqft_tract$NAME[1]`** has the highest population density by residential floor area at **`r round(top_sqft_tract$pop_per_res_sqft[1], 4)` residents per square foot**. Measured by residential units, **`r top_unit_tract$NAME[1]`** has the highest density at **`r round(top_unit_tract$pop_per_res_unit[1], 2)` residents per unit**.
+
+#### Q4: What 5 metro areas, other than NYC, have the largest share of population that identify with your ancestry of interest?
+```{r}
+#| warning: false
+#| message: false
+cbsa_q4_file <- "data/mp03/cbsa_chinese_q4_acs5.csv"
+
+if (!file.exists(cbsa_q4_file)) {
+  cbsa_raw <- get_acs(
+    geography = "cbsa",
+    variables = c(
+      total   = "B01003_001",
+      chinese = "B02018_002"
+    ),
+    year   = 2023,
+    survey = "acs5",
+    output = "wide"
+  ) |>
+    select(GEOID, NAME, total = totalE, chinese = chineseE)
+  
+  write_csv(cbsa_raw, cbsa_q4_file)
+} else {
+  cbsa_raw <- read_csv(cbsa_q4_file, show_col_types = FALSE)
+}
+
+q4_top_cbsa <- cbsa_raw |>
+  filter(
+    str_detect(NAME, "Metro Area"),
+    !str_detect(NAME, "New York-Newark-Jersey City"),
+    !is.na(chinese),
+    !is.na(total)
+  ) |>
+  mutate(pct_chinese = chinese / total) |>
+  arrange(desc(pct_chinese)) |>
+  slice_head(n = 5)
+
+# Table
+q4_top_cbsa |>
+  mutate(
+    total       = scales::comma(total),
+    chinese     = scales::comma(chinese),
+    pct_chinese = scales::percent(pct_chinese, accuracy = 0.01)
+  ) |>
+  select(NAME, total, chinese, pct_chinese) |>
+  knitr::kable(
+    col.names = c("Metropolitan Area (CBSA)", "Total Population", "Chinese Population", "Chinese Share"),
+    caption = "Top 5 Non-NYC Metro Areas by Share of Chinese-American Population"
+  )
+```
+
+#### Q5: At a not-too-granular level, describe the distribution of ancestries in a large non-NYC city of your choosing from the previous question.
+```{r}
+#| warning: false
+#| message: false
+
+sf_ancestry_file <- "data/mp03/sf_ancestry_acs5.csv"
+
+if (!file.exists(sf_ancestry_file)) {
+  sf_raw <- get_acs(
+    geography = "cbsa",
+    variables = c(
+      total      = "B01003_001",
+      mexican    = "B03001_004",
+      chinese    = "B02018_002",
+      filipino   = "B02018_003",
+      indian     = "B02018_001",
+      irish      = "B04006_049",
+      italian    = "B04006_051",
+      vietnamese = "B02018_006"
+    ),
+    year   = 2023,
+    survey = "acs5",
+    output = "tidy"
+  ) |>
+    filter(str_detect(NAME, "San Francisco-Oakland")) |>
+    select(NAME, variable, estimate)
+  
+  write_csv(sf_raw, sf_ancestry_file)
+} else {
+  sf_raw <- read_csv(sf_ancestry_file, show_col_types = FALSE)
+}
+
+sf_total <- sf_raw |>
+  filter(variable == "total") |>
+  pull(estimate)
+
+q5_sf_plot_df <- sf_raw |>
+  filter(variable != "total") |>
+  mutate(
+    ancestry   = str_to_title(variable),
+    pct_metro  = estimate / sf_total,
+    is_chinese = if_else(variable == "chinese", "Selected Group", "Other Major Groups"),
+    label_text = paste0(scales::comma(estimate), " (", scales::percent(pct_metro, accuracy = 0.1), ")")
+  )
+
+# Horizontal bar chart
+ggplot(q5_sf_plot_df, aes(x = reorder(ancestry, estimate), y = estimate, fill = is_chinese)) +
+  geom_col(width = 0.65) +
+  geom_text(aes(label = label_text), hjust = -0.08, size = 3.5) +
+  coord_flip() +
+  scale_y_continuous(
+    labels = scales::comma,
+    expand = expansion(mult = c(0, 0.25))
+  ) +
+  scale_fill_manual(values = c("Selected Group" = "#D95F02", "Other Major Groups" = "#7570B3")) +
+  labs(
+    title    = "Selected Ancestry & Origin Groups in the San Francisco Metro Area",
+    subtitle = "San Francisco-Oakland-Fremont, CA Metro Area (2019–2023 5-Year ACS)",
+    x        = NULL,
+    y        = "Estimated Population",
+    fill     = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position    = "top",
+    panel.grid.major.y = element_blank()
+  )
+```
+
+#### Q6: As a percentage of all US residents who identify with your ancestry of interest, how many live in NY and how many live in other major metro areas?
+```{r}
+#| message: false
+#| warning: false
+us_ny_file <- "data/mp03/us_ny_chinese_acs5.csv"
+
+if (!file.exists(us_ny_file)) {
+  us_chinese <- get_acs(
+    geography = "us",
+    variables = c(chinese = "B02018_002"),
+    year   = 2023,
+    survey = "acs5",
+    output = "tidy"
+  ) |>
+    select(NAME, estimate)
+  
+  ny_chinese <- get_acs(
+    geography = "state",
+    state     = "NY",
+    variables = c(chinese = "B02018_002"),
+    year   = 2023,
+    survey = "acs5",
+    output = "tidy"
+  ) |>
+    select(NAME, estimate)
+  
+  us_ny_df <- bind_rows(us_chinese, ny_chinese)
+  write_csv(us_ny_df, us_ny_file)
+} else {
+  us_ny_df <- read_csv(us_ny_file, show_col_types = FALSE)
+}
+
+us_total_chinese <- us_ny_df |> filter(NAME == "United States") |> pull(estimate)
+ny_state_chinese <- us_ny_df |> filter(NAME == "New York") |> pull(estimate)
+ny_state_pct     <- ny_state_chinese / us_total_chinese
+
+# Top 6 major metro areas
+q6_metro_shares <- cbsa_raw |>
+  filter(
+    str_detect(NAME, "Metro Area"),
+    !is.na(chinese)
+  ) |>
+  mutate(
+    region_type = if_else(str_detect(NAME, "New York-Newark-Jersey City"), "New York Metro", "Other Major Metro"),
+    pct_of_us_chinese = chinese / us_total_chinese
+  ) |>
+  arrange(desc(chinese)) |>
+  slice_head(n = 6)
+
+# Table
+q6_metro_shares |>
+  mutate(
+    chinese           = scales::comma(chinese),
+    pct_of_us_chinese = scales::percent(pct_of_us_chinese, accuracy = 0.01)
+  ) |>
+  select(NAME, region_type, chinese, pct_of_us_chinese) |>
+  knitr::kable(
+    col.names = c("Major Metropolitan Area (CBSA)", "Category", "Chinese Population", "% of All US Chinese"),
+    caption = "Share of Total US Chinese-American Population in NYC vs. Other Major Metro Areas"
+  )
+```
+Out of all **`r scales::comma(us_total_chinese)`** Chinese-American residents nationwide, **`r scales::percent(ny_state_pct, accuracy = 0.01)`** (**`r scales::comma(ny_state_chinese)`**) live in New York State, and **`r scales::percent(q6_metro_shares$pct_of_us_chinese[1], accuracy = 0.01)`** live within the broader New York-Newark-Jersey City metro area. As shown in the table above, other major metropolitan hubs—led by Los Angeles, San Francisco–Oakland, San Jose, Boston, and Seattle—collectively house another **`r scales::percent(sum(q6_metro_shares$pct_of_us_chinese[-1]), accuracy = 0.01)`** of the nation's Chinese-American population.
+
+#### Q7: Do we observe a roughly linear relationship between population and housing (units or area) across NYC tracts or is the relationship more complex?
+```{r}
+#| message: false
+#| warning: false
+q3_density |>
+  filter(total > 0, res_units > 0, res_units < 15000) |>
+  ggplot(aes(x = res_units, y = total)) +
+  geom_point(alpha = 0.35, color = "#2B5C8F", size = 1.5) +
+  geom_smooth(method = "lm", color = "#D90429", se = FALSE) +
+  scale_x_continuous(labels = scales::comma) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Population vs. Residential Units Across NYC Census Tracts",
+    x     = "Total Residential Units",
+    y     = "Total Population"
+  ) +
+  theme_minimal()
+```
+The relationship is **roughly linear** across most residential tracts, though a handful of outlier tracts deviate due to institutional populations with high headcounts despite minimal residential units.
+
+#### Q8: What are the NTAs with highest buildings?
+```{r}
+#| message: false
+#| warning: false
+nyc_pluto |>
+  filter(!is.na(bct2020), !is.na(numfloors), numfloors > 0) |>
+  mutate(GEOID = paste0(c("36061", "36005", "36047", "36081", "36085")[as.integer(substr(bct2020, 1, 1))], substr(bct2020, 2, 7))) |>
+  group_by(GEOID) |>
+  summarize(sum_floors = sum(numfloors), n_bldgs = n(), max_floors = max(numfloors), .groups = "drop") |>
+  inner_join(
+    nyc_tracts |> st_transform(st_crs(nyc_nta)) |> st_join(nyc_nta |> select(NTAName, BoroName), largest = TRUE) |> st_drop_geometry(),
+    by = "GEOID"
+  ) |>
+  group_by(NTAName, BoroName) |>
+  summarize(avg_floors = round(sum(sum_floors) / sum(n_bldgs), 1), max_floors = max(max_floors), .groups = "drop") |>
+  arrange(desc(avg_floors)) |>
+  slice_head(n = 5) |>
+  knitr::kable(col.names = c("Neighborhood (NTA)", "Borough", "Average Floors", "Tallest Building"), caption = "Top 5 NYC Neighborhoods by Building Height")
+```
+
+#### Q9: Visualize how population density varies across NYC?
+```{r}
+#| message: false
+#| warning: false
+nyc_tracts |>
+  mutate(pop_density = total / (as.numeric(st_area(st_geometry(nyc_tracts))) / 1e6)) |>
+  ggplot() +
+  geom_sf(aes(fill = pop_density), color = NA) +
+  scale_fill_distiller(
+    palette   = "PuBuGn",
+    direction = 1,
+    trans     = "sqrt",
+    limits    = c(0, 45000),
+    oob       = scales::oob_squish,
+    breaks    = c(0, 15000, 30000, 45000),
+    labels    = c("0", "15k", "30k", "45k+"),
+    name      = "Residents / sq km",
+    guide     = guide_colorbar(barwidth = 14, barheight = 0.5, title.position = "top", title.hjust = 0.5)
+  ) +
+  labs(
+    title   = "Population Density Across NYC Census Tracts",
+    caption = "Source: US Census Bureau (2019–2023 5-Year ACS)"
+  ) +
+  theme_void() +
+  theme(
+    legend.position = "bottom",
+    plot.title      = element_text(face = "bold", hjust = 0.5, margin = margin(b = 8)),
+    plot.caption    = element_text(color = "gray45", hjust = 0.5, margin = margin(t = 8))
+  )
+```
+
+#### Q10: How many New Yorkers live in areas that could be described as ‘primarily commercial’? 
+```{r}
+#| message: false
+#| warning: false
+q10_commercial <- nyc_pluto |>
+  filter(!is.na(bct2020), nchar(bct2020) == 7) |>
+  mutate(GEOID = paste0(c("36061", "36005", "36047", "36081", "36085")[as.integer(substr(bct2020, 1, 1))], substr(bct2020, 2, 7))) |>
+  group_by(GEOID) |>
+  summarize(
+    com_area   = sum(comarea, na.rm = TRUE),
+    total_area = sum(bldgarea, na.rm = TRUE),
+    .groups    = "drop"
+  ) |>
+  inner_join(st_drop_geometry(nyc_tracts), by = "GEOID") |>
+  filter(total_area > 0, (com_area / total_area) > 0.5)
+
+q10_pop   <- sum(q10_commercial$total, na.rm = TRUE)
+q10_share <- q10_pop / sum(nyc_tracts$total, na.rm = TRUE)
+```
+Defining a "primarily commercial" area as a census tract where commercial floor area accounts for more than 50% of total building area, approximately **`r scales::comma(q10_pop)` New Yorkers** (**`r scales::percent(q10_share, accuracy = 0.01)`** of the city's total population) live in primarily commercial tracts—concentrated largely in Midtown Manhattan, Lower Manhattan, and Downtown Brooklyn.
+
+### Atlas of Communities: Chinese-Americans in New York City and Beyond
+```{r}
+#| message: false
+#| warning: false
+
+# NYC tract level Chinese population metrics for Map 1
+nyc_chinese_map <- nyc_tracts |>
+  mutate(
+    chinese     = replace_na(chinese, 0),
+    pct_chinese = if_else(total > 0, chinese / total, 0)
+  )
+
+nyc_total_chinese <- sum(nyc_chinese_map$chinese, na.rm = TRUE)
+nyc_share_of_us   <- nyc_total_chinese / us_total_chinese
+
+top_nyc_tract <- nyc_chinese_map |>
+  st_drop_geometry() |>
+  filter(total >= 100) |>
+  arrange(desc(pct_chinese)) |>
+  slice_head(n = 1)
+
+# US state level Chinese population for Map 2
+us_states_file <- "data/mp03/us_states_chinese_sf.rds"
+
+if (!file.exists(us_states_file)) {
+  us_states_chinese <- get_acs(
+    geography    = "state",
+    variables    = c(chinese = "B02018_002"),
+    year         = 2023,
+    survey       = "acs5",
+    geometry     = TRUE,
+    progress_bar = FALSE,
+    output       = "wide"
+  ) |>
+    filter(!GEOID %in% c("02", "15", "72")) |>
+    select(GEOID, NAME, chinese = chineseE)
+  
+  saveRDS(us_states_chinese, us_states_file)
+} else {
+  us_states_chinese <- readRDS(us_states_file)
+}
+```
+
+#### Historical Roots and the Journey to New York
+
+Chinese immigration to the United States accelerated in the mid-nineteenth century during the California Gold Rush and the construction of the First Transcontinental Railroad. Despite their role in building western infrastructure, early immigrants faced severe legal discrimination, which led to the **Chinese Exclusion Act of 1882**—the first federal law barring entry based on nationality. Facing hostility in the West, many migrants moved east and established an enclave along Mott, Pell, and Doyers Streets in Lower Manhattan. After the **Immigration and Nationality Act of 1965** lifted national-origins quotas, New York City’s Chinese population grew rapidly and expanded far beyond Manhattan.
+
+#### Geographic Footprint in New York City
+
+Today, New York City is home to **`r scales::comma(nyc_total_chinese)` Chinese-American residents**, accounting for **`r scales::percent(nyc_share_of_us, accuracy = 0.01)`** of all **`r scales::comma(us_total_chinese)`** Chinese-Americans nationwide. Rather than remaining centered in Manhattan’s historic Chinatown, the community now is concentrated in major residential and commercial neighborhoods in Brooklyn and Queens, particularly Sunset Park, Bensonhurst, Flushing, and Elmhurst. At the tract level, **`r str_remove(top_nyc_tract$NAME[1], "; New York$")`** has the highest concentration in the city, where **`r scales::percent(top_nyc_tract$pct_chinese[1], accuracy = 0.01)`** of residents identify as Chinese-American.
+
+```{r}
+#| message: false
+#| warning: false
+#| fig-width: 8.5
+#| fig-height: 6.5
+
+# Spatial distribution of Chinese-American residents across NYC census tracts
+ggplot(nyc_chinese_map) +
+  geom_sf(aes(fill = chinese), color = NA) +
+  scale_fill_distiller(
+    palette   = "PuBuGn",
+    direction = 1,
+    trans     = "sqrt",
+    limits    = c(0, 4500),
+    oob       = scales::oob_squish,
+    breaks    = c(0, 1000, 2500, 4500),
+    labels    = c("0", "1,000", "2,500", "4,500+"),
+    name      = "Chinese-American Residents",
+    guide     = guide_colorbar(barwidth = 14, barheight = 0.5, title.position = "top", title.hjust = 0.5)
+  ) +
+  labs(
+    title    = "Chinese-American Population Across NYC Census Tracts",
+    subtitle = "Major clusters span Lower Manhattan, Sunset Park/Bensonhurst in Brooklyn, and Flushing in Queens",
+    caption  = "Source: US Census Bureau (2019–2023 5-Year ACS)"
+  ) +
+  theme_void() +
+  theme(
+    legend.position = "bottom",
+    plot.title      = element_text(face = "bold", hjust = 0.5, margin = margin(b = 4)),
+    plot.subtitle   = element_text(size = 9.5, color = "gray35", hjust = 0.5, margin = margin(b = 8)),
+    plot.caption    = element_text(color = "gray45", hjust = 0.5, margin = margin(t = 8))
+  )
+```
+
+#### National Presence Across the United States
+
+Across the United States, Chinese-American communities remain heavily concentrated along the Pacific Coast and in major metro areas. While New York State houses **`r scales::comma(ny_state_chinese)`** Chinese-American residents (**`r scales::percent(ny_state_pct, accuracy = 0.01)`** of the national total), California has the largest statewide population, led by the San Francisco Bay Area (where Chinese-Americans make up **`r scales::percent(q4_top_cbsa$pct_chinese[2], accuracy = 0.01)`** of metro residents) and Greater Los Angeles. Large communities have also developed in Seattle, Boston, Chicago, and Houston as new waves of students, professionals, and families settled in these cities over the past several decades.
+
+```{r}
+#| message: false
+#| warning: false
+#| fig-width: 9
+#| fig-height: 5.5
+
+# Nationwide distribution of Chinese-American population by state
+ggplot(us_states_chinese) +
+  geom_sf(aes(fill = chinese), color = "white", linewidth = 0.25) +
+  scale_fill_distiller(
+    palette   = "PuBuGn",
+    direction = 1,
+    trans     = "sqrt",
+    labels    = scales::comma,
+    name      = "Chinese-American Population",
+    guide     = guide_colorbar(barwidth = 15, barheight = 0.5, title.position = "top", title.hjust = 0.5)
+  ) +
+  labs(
+    title    = "Chinese-American Population Across the United States",
+    subtitle = "California and New York anchor the largest statewide Chinese-American populations",
+    caption  = "Source: US Census Bureau (2019–2023 5-Year ACS)"
+  ) +
+  theme_void() +
+  theme(
+    legend.position = "bottom",
+    plot.title      = element_text(face = "bold", hjust = 0.5, margin = margin(b = 4)),
+    plot.subtitle   = element_text(size = 9.5, color = "gray35", hjust = 0.5, margin = margin(b = 8)),
+    plot.caption    = element_text(color = "gray45", hjust = 0.5, margin = margin(t = 8))
+  )
+```
+
+::: {.callout-note title="AI Usage Statement" collapse="true"}
+Gemini was used to refine the formatting of tables and enhance the visual style of charts. Additionally, Gemini provided historical context and brainstorm ideas for the open-ended prompt. All non-code text and analytical interpretations were written without generative AI.
+:::
